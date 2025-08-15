@@ -58,11 +58,11 @@ def get_numerology_grid(dob: datetime, basic_num: int, destiny_num: int) -> dict
         grid_digits.append(basic_num)
     return {i: grid_digits.count(i) for i in range(1, 10)}
 
-def get_mahadasha_sequence(basic_num: int, birth_year: int, total_years: int = 100):
+def get_mahadasha_sequence(basic_num: int, birth_year: int, end_year: int):
     seq = []
     current_num = basic_num
     year_pointer = birth_year
-    for _ in range(total_years):
+    while year_pointer <= end_year:
         planet, duration = PLANETARY_MAP[current_num]
         seq.append({"MD_Number": current_num, "Planet": planet, "Start_Year": year_pointer, "End_Year": year_pointer + duration})
         year_pointer += duration
@@ -105,13 +105,14 @@ def get_day_lord(date: datetime, month_num: int) -> dict:
         "Day_Number": day_number
     }
 
+# Existing full package endpoint
 @app.get("/numerology")
 def numerology(dob: str = Query(...), year: int = Query(...)):
     dob_obj = validate_dob(dob)
     basic_num = get_basic_number(dob_obj)
     destiny_num = get_destiny_number(dob_obj)
     grid = get_numerology_grid(dob_obj, basic_num, destiny_num)
-    md_seq = get_mahadasha_sequence(basic_num, dob_obj.year)
+    md_seq = get_mahadasha_sequence(basic_num, dob_obj.year, 2030)
     ad_year_num = get_antardasha_year(year, dob_obj, basic_num)
     monthly_seq = get_monthly_dasha(ad_year_num, dob_obj, year)
     return {
@@ -123,10 +124,59 @@ def numerology(dob: str = Query(...), year: int = Query(...)):
         "Monthly_Dasha": monthly_seq
     }
 
-@app.get("/day-lord")
-def day_lord(date: str = Query(...), month_num: int = Query(...)):
+# New modular endpoints
+@app.get("/basic-number")
+def basic_number(dob: str = Query(...)):
+    dob_obj = validate_dob(dob)
+    basic_num = get_basic_number(dob_obj)
+    grid = get_numerology_grid(dob_obj, basic_num, get_destiny_number(dob_obj))
+    return {"Basic_Number": basic_num, "Grid": grid}
+
+@app.get("/destiny-number")
+def destiny_number(dob: str = Query(...)):
+    dob_obj = validate_dob(dob)
+    destiny_num = get_destiny_number(dob_obj)
+    grid = get_numerology_grid(dob_obj, get_basic_number(dob_obj), destiny_num)
+    return {"Destiny_Number": destiny_num, "Grid": grid}
+
+@app.get("/grid")
+def numerology_grid(dob: str = Query(...)):
+    dob_obj = validate_dob(dob)
+    grid = get_numerology_grid(dob_obj, get_basic_number(dob_obj), get_destiny_number(dob_obj))
+    return {"Grid": grid}
+
+@app.get("/mahadasha")
+def mahadasha(dob: str = Query(...)):
+    dob_obj = validate_dob(dob)
+    basic_num = get_basic_number(dob_obj)
+    seq = get_mahadasha_sequence(basic_num, dob_obj.year, 2030)
+    grid = get_numerology_grid(dob_obj, basic_num, get_destiny_number(dob_obj))
+    return {"Mahadasha": seq, "Grid": grid}
+
+@app.get("/antardasha")
+def antardasha(dob: str = Query(...), year: int = Query(...)):
+    dob_obj = validate_dob(dob)
+    basic_num = get_basic_number(dob_obj)
+    ad_year_num = get_antardasha_year(year, dob_obj, basic_num)
+    grid = get_numerology_grid(dob_obj, basic_num, get_destiny_number(dob_obj))
+    return {"Antardasha_Year_Number": ad_year_num, "Grid": grid}
+
+@app.get("/monthly-dasha")
+def monthly_dasha(dob: str = Query(...), year: int = Query(...)):
+    dob_obj = validate_dob(dob)
+    basic_num = get_basic_number(dob_obj)
+    ad_year_num = get_antardasha_year(year, dob_obj, basic_num)
+    monthly_seq = get_monthly_dasha(ad_year_num, dob_obj, year)
+    grid = get_numerology_grid(dob_obj, basic_num, get_destiny_number(dob_obj))
+    return {"Monthly_Dasha": monthly_seq, "Grid": grid}
+
+@app.get("/day-dasha")
+def day_dasha(dob: str = Query(...), date: str = Query(...), month_num: int = Query(...)):
+    dob_obj = validate_dob(dob)
     try:
         date_obj = datetime.strptime(date, "%d-%m-%Y")
     except ValueError:
         raise HTTPException(status_code=400, detail="Provide valid date in DD-MM-YYYY.")
-    return get_day_lord(date_obj, month_num)
+    day_lord_info = get_day_lord(date_obj, month_num)
+    grid = get_numerology_grid(dob_obj, get_basic_number(dob_obj), get_destiny_number(dob_obj))
+    return {"Day_Dasha": day_lord_info, "Grid": grid}
