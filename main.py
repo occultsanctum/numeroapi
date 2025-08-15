@@ -130,14 +130,14 @@ def basic_number(dob: str = Query(...)):
     dob_obj = validate_dob(dob)
     basic_num = get_basic_number(dob_obj)
     grid = get_numerology_grid(dob_obj, basic_num, get_destiny_number(dob_obj))
-    return {"Basic_Number": basic_num, "Grid": grid}
+    return {"Basic_Number": basic_num}
 
 @app.get("/destiny-number")
 def destiny_number(dob: str = Query(...)):
     dob_obj = validate_dob(dob)
     destiny_num = get_destiny_number(dob_obj)
     grid = get_numerology_grid(dob_obj, get_basic_number(dob_obj), destiny_num)
-    return {"Destiny_Number": destiny_num, "Grid": grid}
+    return {"Destiny_Number": destiny_num}
 
 @app.get("/grid")
 def numerology_grid(dob: str = Query(...)):
